@@ -1,0 +1,68 @@
+[
+  {
+    "xml_schema": "1.0",
+    "report_metadata": {
+      "org_name": "organization",
+      "org_email": "org@mailinator.com",
+      "org_extra_contact_info": null,
+      "report_id": "report_id",
+      "begin_date": "2024-09-08 00:00:03",
+      "end_date": "2024-09-09 00:00:06",
+      "errors": []
+    },
+    "policy_published": {
+      "domain": "inclusion.beta.gouv.fr",
+      "adkim": "r",
+      "aspf": "r",
+      "p": "none",
+      "sp": "none",
+      "pct": "100",
+      "fo": "0"
+    },
+    "records": [
+      {
+        "source": {
+          "ip_address": "87.253.239.91",
+          "country": "FR",
+          "reverse_dns": null,
+          "base_domain": null,
+          "name": null,
+          "type": null
+        },
+        "count": 2,
+        "alignment": {
+          "spf": true,
+          "dkim": true,
+          "dmarc": true
+        },
+        "policy_evaluated": {
+          "disposition": "none",
+          "dkim": "pass",
+          "spf": "pass",
+          "policy_override_reasons": []
+        },
+        "identifiers": {
+          "header_from": "inclusion.beta.gouv.fr",
+          "envelope_from": "bnc3.inclusion.beta.gouv.fr",
+          "envelope_to": null
+        },
+        "auth_results": {
+          "dkim": [
+            {
+              "domain": "inclusion.beta.gouv.fr",
+              "selector": "mailjet",
+              "result": "pass"
+            }
+          ],
+          "spf": [
+            {
+              "domain": "bnc3.inclusion.beta.gouv.fr",
+              "scope": "mfrom",
+              "result": "pass"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

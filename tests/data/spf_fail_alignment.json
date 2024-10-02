@@ -1,0 +1,73 @@
+[
+  {
+    "xml_schema": "1.0",
+    "report_metadata": {
+      "org_name": "organization",
+      "org_email": "org@mailinator.com",
+      "org_extra_contact_info": null,
+      "report_id": "report_id",
+      "begin_date": "2024-09-08 00:00:03",
+      "end_date": "2024-09-09 00:00:06",
+      "errors": []
+    },
+    "policy_published": {
+      "domain": "inclusion.beta.gouv.fr",
+      "adkim": "r",
+      "aspf": "r",
+      "p": "none",
+      "sp": "none",
+      "pct": "100",
+      "fo": "0"
+    },
+    "records": [
+      {
+        "source": {
+          "ip_address": "209.85.167.53",
+          "country": "US",
+          "reverse_dns": null,
+          "base_domain": null,
+          "name": null,
+          "type": null
+        },
+        "count": 1,
+        "alignment": {
+          "spf": false,
+          "dkim": true,
+          "dmarc": true
+        },
+        "policy_evaluated": {
+          "disposition": "none",
+          "dkim": "pass",
+          "spf": "fail",
+          "policy_override_reasons": []
+        },
+        "identifiers": {
+          "envelope_from": "gmail.com",
+          "header_from": "inclusion.beta.gouv.fr",
+          "envelope_to": null
+        },
+        "auth_results": {
+          "dkim": [
+            {
+              "domain": "inclusion.beta.gouv.fr",
+              "selector": "none",
+              "result": "pass"
+            },
+            {
+              "domain": "mailin.fr",
+              "selector": "none",
+              "result": "pass"
+            }
+          ],
+          "spf": [
+            {
+              "domain": "gmail.com",
+              "scope": "mfrom",
+              "result": "pass"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

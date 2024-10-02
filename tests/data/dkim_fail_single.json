@@ -1,0 +1,68 @@
+[
+  {
+    "xml_schema": "1.0",
+    "report_metadata": {
+      "org_name": "organization",
+      "org_email": "org@mailinator.com",
+      "org_extra_contact_info": null,
+      "report_id": "report_id",
+      "begin_date": "2024-09-08 00:00:03",
+      "end_date": "2024-09-09 00:00:06",
+      "errors": []
+    },
+    "policy_published": {
+      "domain": "inclusion.beta.gouv.fr",
+      "adkim": "r",
+      "aspf": "r",
+      "p": "none",
+      "sp": "none",
+      "pct": "100",
+      "fo": "0"
+    },
+    "records": [
+      {
+        "source": {
+          "ip_address": "188.172.137.2",
+          "country": "IE",
+          "reverse_dns": null,
+          "base_domain": null,
+          "name": null,
+          "type": null
+        },
+        "count": 1,
+        "alignment": {
+          "spf": true,
+          "dkim": false,
+          "dmarc": true
+        },
+        "policy_evaluated": {
+          "disposition": "none",
+          "dkim": "fail",
+          "spf": "pass",
+          "policy_override_reasons": []
+        },
+        "identifiers": {
+          "envelope_from": "inclusion.beta.gouv.fr",
+          "header_from": "inclusion.beta.gouv.fr",
+          "envelope_to": "travail-partage.org"
+        },
+        "auth_results": {
+          "dkim": [
+            {
+              "domain": "inclusion.beta.gouv.fr",
+              "selector": "zendesk2",
+              "result": "fail"
+            }
+          ],
+          "spf": [
+            {
+              "domain": "inclusion.beta.gouv.fr",
+              "scope": "mfrom",
+              "result": "pass"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]
