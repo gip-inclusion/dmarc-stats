@@ -141,15 +141,15 @@ def print_report(results: DMARCAggregateResults):
     print(f"DKIM issue{pluralize(dkim_issues)}: {dkim_issues}")
     print()
     print(f"# SPF ({spf_issues}):")
-    print(f"## Check failed ({sum(count for _, count in spf_failures.items())}):")
+    print(f"## Check failed ({sum(count for count in spf_failures.values())}):")
     for envelope_from, count in sorted(spf_failures.items(), key=lambda item: -item[1]):
         print(f"Envelope from: {envelope_from}: {count} attempt{pluralize(count)}")
     print()
-    print(f"## Misaligned ({sum(count for _, count in spf_alignment.items())}):")
+    print(f"## Misaligned ({sum(count for count in spf_alignment.values())}):")
     for envelope_from, count in sorted(spf_alignment.items(), key=sort_value_key):
         print(f"Envelope from: {envelope_from}: {count} attempt{pluralize(count)}")
     print()
-    print(f"## Neutral ({sum(count for _, count in spf_neutral.items())})")
+    print(f"## Neutral ({sum(count for count in spf_neutral.values())})")
     for envelope_from, count in sorted(spf_neutral.items(), key=sort_value_key):
         print(f"Envelope from: {envelope_from}: {count} attempt{pluralize(count)}")
     print()
