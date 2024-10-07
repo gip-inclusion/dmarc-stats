@@ -25,28 +25,22 @@ spec = {
     "dkim_fail_alignment.json": DMARCAggregateResults(
         total=1,
         spf_success=1,
-        dkim_domain={"inclusion.beta.gouv.fr": 1},
+        dkim={"inclusion.beta.gouv.fr": {"default": {"pass": 1}}},
     ),
     "dkim_fail_multiple.json": DMARCAggregateResults(
         total=1,
         spf_alignment={"ac-toulouse.fr": 1},
-        dkim_sig={
-            (
-                "ac-toulouse.fr",
-                # First selector.
-                "selector2-mongreta-onmicrosoft-com"
-                "._domainkey.mongreta.onmicrosoft.com, "
-                # Second selector.
-                "mail._domainkey.inclusion.beta.gouv.fr",
-            ): 1
+        dkim={
+            "ac-toulouse.fr": {
+                "selector2-mongreta-onmicrosoft-com": {"fail": 1},
+                "mail": {"fail": 1},
+            }
         },
     ),
     "dkim_fail_single.json": DMARCAggregateResults(
         total=1,
         spf_success=1,
-        dkim_sig={
-            ("inclusion.beta.gouv.fr", "zendesk2._domainkey.inclusion.beta.gouv.fr"): 1
-        },
+        dkim={"inclusion.beta.gouv.fr": {"zendesk2": {"fail": 1}}},
     ),
 }
 

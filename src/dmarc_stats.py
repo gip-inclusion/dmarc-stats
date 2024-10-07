@@ -13,8 +13,8 @@ class DMARCAggregateResults(NamedTuple):
     spf_alignment: dict[str, int] = {}
     spf_failures: dict[str, int] = {}
     spf_neutral: dict[str, int] = {}
-    dkim_sig: dict[tuple[str, str], int] = {}
-    dkim_domain: dict[str, int] = {}
+    no_dkim: dict[str, int] = {}
+    dkim: dict[str, dict[str, dict[str, int]]] = {}
     overridden_policies: list[str] = []
 
 
@@ -37,6 +37,15 @@ def sort_value_key(item):
     return -item[1], item[0]
 
 
+def count_dkim(stats):
+    return sum(
+        count
+        for reason_results in stats.values()
+        for reason, count in reason_results.items()
+        if reason != "pass"
+    )
+
+
 def process_dmarc_aggregate(report_json_file, since=None):
     total = 0
     spf_success = 0
@@ -44,8 +53,8 @@ def process_dmarc_aggregate(report_json_file, since=None):
     spf_alignment = defaultdict(int)
     spf_failures = defaultdict(int)
     spf_neutral = defaultdict(int)
-    dkim_sig = defaultdict(int)
-    dkim_domain = defaultdict(int)
+    no_dkim = defaultdict(int)
+    dkim = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     overridden_policies = []
     with open(report_json_file, "rb") as f:
         data = json.load(f)
@@ -93,21 +102,11 @@ def process_dmarc_aggregate(report_json_file, since=None):
                             spf_alignment[envelope_from] += count
                 if dkim_result == "fail":
                     envelope_from = record["identifiers"]["envelope_from"]
-                    failure_details = [
-                        dkim_check
-                        for dkim_check in record["auth_results"]["dkim"]
-                        if dkim_check["result"] == "fail"
-                    ]
-                    if failure_details:
-                        selector = ", ".join(
-                            f"{dkim_entry['selector']}._domainkey.{dkim_entry['domain']}"
-                            for dkim_entry in failure_details
-                        )
-                        dkim_sig[(envelope_from, selector)] += count
-                    else:
-                        # Valid signature, but for the wrong domain
-                        # (invalid envelope_from).
-                        dkim_domain[envelope_from] += count
+                    dkim_results = record["auth_results"]["dkim"]
+                    for res in dkim_results:
+                        dkim[envelope_from][res["selector"]][res["result"]] += count
+                    if not dkim_results:
+                        no_dkim[envelope_from] += count
                 total += count
     return DMARCAggregateResults(
         total,
@@ -116,8 +115,8 @@ def process_dmarc_aggregate(report_json_file, since=None):
         spf_alignment,
         spf_failures,
         spf_neutral,
-        dkim_sig,
-        dkim_domain,
+        no_dkim,
+        dkim,
         overridden_policies,
     )
 
@@ -130,8 +129,8 @@ def print_report(results: DMARCAggregateResults):
         spf_alignment,
         spf_failures,
         spf_neutral,
-        dkim_sig,
-        dkim_domain,
+        no_dkim,
+        dkim,
         overridden_policies,
     ] = results
 
@@ -156,18 +155,25 @@ def print_report(results: DMARCAggregateResults):
     print()
     print()
     print(f"# DKIM: {dkim_issues}")
-    print(f"## Invalid signature ({sum(count for _, count in dkim_sig.items())}):")
-    for (envelope_from, selector), count in sorted(
-        dkim_sig.items(), key=sort_value_key
-    ):
-        print(
-            f"Envelope from: {envelope_from} {selector=}: "
-            f"{count} attempt{pluralize(count)}"
-        )
-    print()
-    print(f"## Invalid domain ({sum(count for _, count in dkim_domain.items())}):")
-    for envelope_from, count in sorted(dkim_domain.items(), key=sort_value_key):
+    print(f"## Missing signature ({sum(no_dkim.values())}):")
+    for envelope_from, count in sorted(no_dkim.items(), key=sort_value_key):
         print(f"Envelope from: {envelope_from}: {count} attempt{pluralize(count)}")
+    print()
+    dkim_report = sorted(dkim.items(), key=lambda item: -count_dkim(item[1]))
+    dkim_fail_count = sum(count_dkim(stats) for stats in dkim.values())
+    print(f"## Invalid signature ({dkim_fail_count}):")
+    for envelope_from, stats in dkim_report:
+        print(f"Envelope from: {envelope_from} ({count_dkim(stats)})")
+        for selector, reasons in stats.items():
+            reason_str = ", ".join(
+                [
+                    f"{reason}: {count}"
+                    for reason, count in sorted(
+                        reasons.items(), key=lambda item: item[0]
+                    )
+                ]
+            )
+            print(f"  Selector: {selector} - {{{reason_str}}}")
     print()
     print("# Overridden policies:")
     for policy, count in Counter(overridden_policies).most_common():
