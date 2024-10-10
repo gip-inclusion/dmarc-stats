@@ -1,4 +1,5 @@
 import argparse
+import csv
 import datetime
 import json
 import pathlib
@@ -21,10 +22,21 @@ class DMARCAggregateResults(NamedTuple):
 def entrypoint():
     parser = argparse.ArgumentParser()
     parser.add_argument("aggregate_file_path", type=pathlib.Path)
+    parser.add_argument("--output-stats-csv", type=pathlib.Path)
     parser.add_argument("--since", type=datetime.date.fromisoformat)
     args = parser.parse_args()
-    results = process_dmarc_aggregate(args.aggregate_file_path, args.since)
-    print_report(results)
+    daily_stats, aggregate_results = process_dmarc_aggregate(
+        args.aggregate_file_path, args.since
+    )
+    print_report(aggregate_results)
+    if args.output_stats_csv:
+        with open(args.output_stats_csv, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["date", "total", "SPF success", "DKIM success"])
+            for date, stats in sorted(daily_stats.items(), key=lambda item: item[0]):
+                writer.writerow(
+                    [date, stats["TOTAL"], stats["SPF_OK"], stats["DKIM_OK"]]
+                )
 
 
 def pluralize(count):
@@ -46,6 +58,12 @@ def count_dkim(stats):
     )
 
 
+def naive_date(timestamp_str):
+    naive_datetime = datetime.datetime.fromisoformat(timestamp_str)
+    utc_datetime = naive_datetime.replace(tzinfo=datetime.timezone.utc)
+    return utc_datetime.date()
+
+
 def process_dmarc_aggregate(report_json_file, since=None):
     total = 0
     spf_success = 0
@@ -56,13 +74,23 @@ def process_dmarc_aggregate(report_json_file, since=None):
     no_dkim = defaultdict(int)
     dkim = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     overridden_policies = []
+    daily_stats: dict[datetime.date, dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
     with open(report_json_file, "rb") as f:
         data = json.load(f)
         for report in data:
-            if since:
-                end_date_str = report["report_metadata"]["end_date"]
-                if datetime.datetime.fromisoformat(end_date_str).date() <= since:
-                    continue
+            start_date = naive_date(report["report_metadata"]["begin_date"])
+            end_date = naive_date(report["report_metadata"]["end_date"])
+            if since and end_date <= since:
+                continue
+
+            def assign_stats_for_date_range(key, value):
+                date = start_date
+                while date < end_date:
+                    daily_stats[date][key] += value
+                    date += datetime.timedelta(days=1)
+
             for record in report["records"]:
                 evaluation_results = record["policy_evaluated"]
                 if override_reasons := evaluation_results["policy_override_reasons"]:
@@ -75,8 +103,10 @@ def process_dmarc_aggregate(report_json_file, since=None):
                 dkim_result = evaluation_results["dkim"]
                 if spf_result == "pass":
                     spf_success += count
+                    assign_stats_for_date_range("SPF_OK", count)
                 if dkim_result == "pass":
                     dkim_success += count
+                    assign_stats_for_date_range("DKIM_OK", count)
 
                 if spf_result == "fail":
                     envelope_from = record["identifiers"]["envelope_from"]
@@ -108,7 +138,8 @@ def process_dmarc_aggregate(report_json_file, since=None):
                     if not dkim_results:
                         no_dkim[envelope_from] += count
                 total += count
-    return DMARCAggregateResults(
+                assign_stats_for_date_range("TOTAL", count)
+    return daily_stats, DMARCAggregateResults(
         total,
         spf_success,
         dkim_success,
