@@ -79,66 +79,66 @@ def process_dmarc_aggregate(report_json_file, since=None):
     )
     with open(report_json_file, "rb") as f:
         data = json.load(f)
-        for report in data:
-            start_date = naive_date(report["report_metadata"]["begin_date"])
-            end_date = naive_date(report["report_metadata"]["end_date"])
-            if since and end_date <= since:
+    for report in data:
+        start_date = naive_date(report["report_metadata"]["begin_date"])
+        end_date = naive_date(report["report_metadata"]["end_date"])
+        if since and end_date <= since:
+            continue
+
+        def assign_stats_for_date_range(key, value):
+            date = start_date
+            while date < end_date:
+                daily_stats[date][key] += value
+                date += datetime.timedelta(days=1)
+
+        for record in report["records"]:
+            evaluation_results = record["policy_evaluated"]
+            if override_reasons := evaluation_results["policy_override_reasons"]:
+                hashable_policy = json.dumps(override_reasons)
+                overridden_policies.append(hashable_policy)
                 continue
 
-            def assign_stats_for_date_range(key, value):
-                date = start_date
-                while date < end_date:
-                    daily_stats[date][key] += value
-                    date += datetime.timedelta(days=1)
+            count = record["count"]
+            spf_result = evaluation_results["spf"]
+            dkim_result = evaluation_results["dkim"]
+            if spf_result == "pass":
+                spf_success += count
+                assign_stats_for_date_range("SPF_OK", count)
+            if dkim_result == "pass":
+                dkim_success += count
+                assign_stats_for_date_range("DKIM_OK", count)
 
-            for record in report["records"]:
-                evaluation_results = record["policy_evaluated"]
-                if override_reasons := evaluation_results["policy_override_reasons"]:
-                    hashable_policy = json.dumps(override_reasons)
-                    overridden_policies.append(hashable_policy)
-                    continue
-
-                count = record["count"]
-                spf_result = evaluation_results["spf"]
-                dkim_result = evaluation_results["dkim"]
-                if spf_result == "pass":
-                    spf_success += count
-                    assign_stats_for_date_range("SPF_OK", count)
-                if dkim_result == "pass":
-                    dkim_success += count
-                    assign_stats_for_date_range("DKIM_OK", count)
-
-                if spf_result == "fail":
-                    envelope_from = record["identifiers"]["envelope_from"]
-                    failure_details = [
+            if spf_result == "fail":
+                envelope_from = record["identifiers"]["envelope_from"]
+                failure_details = [
+                    entry
+                    for entry in record["auth_results"]["spf"]
+                    if entry["result"] == "fail"
+                ]
+                if failure_details:
+                    assert len(failure_details) == 1
+                    spf_failures[envelope_from] += count
+                else:
+                    neutral_details = [
                         entry
                         for entry in record["auth_results"]["spf"]
-                        if entry["result"] == "fail"
+                        if entry["result"] == "neutral"
                     ]
-                    if failure_details:
-                        assert len(failure_details) == 1
-                        spf_failures[envelope_from] += count
+                    if neutral_details:
+                        assert len(neutral_details) == 1
+                        spf_neutral[envelope_from] += count
                     else:
-                        neutral_details = [
-                            entry
-                            for entry in record["auth_results"]["spf"]
-                            if entry["result"] == "neutral"
-                        ]
-                        if neutral_details:
-                            assert len(neutral_details) == 1
-                            spf_neutral[envelope_from] += count
-                        else:
-                            assert not record["alignment"]["spf"]
-                            spf_alignment[envelope_from] += count
-                if dkim_result == "fail":
-                    envelope_from = record["identifiers"]["envelope_from"]
-                    dkim_results = record["auth_results"]["dkim"]
-                    for res in dkim_results:
-                        dkim[envelope_from][res["selector"]][res["result"]] += count
-                    if not dkim_results:
-                        no_dkim[envelope_from] += count
-                total += count
-                assign_stats_for_date_range("TOTAL", count)
+                        assert not record["alignment"]["spf"]
+                        spf_alignment[envelope_from] += count
+            if dkim_result == "fail":
+                envelope_from = record["identifiers"]["envelope_from"]
+                dkim_results = record["auth_results"]["dkim"]
+                for res in dkim_results:
+                    dkim[envelope_from][res["selector"]][res["result"]] += count
+                if not dkim_results:
+                    no_dkim[envelope_from] += count
+            total += count
+            assign_stats_for_date_range("TOTAL", count)
     return daily_stats, DMARCAggregateResults(
         total,
         spf_success,
